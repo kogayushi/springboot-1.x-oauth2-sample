@@ -6,3 +6,8 @@ logging:
   level:
     root: INFO
     org.springframework.security: DEBUG
+server:
+  session:
+    persistent: false
+    tracking-modes: url, cookie
+

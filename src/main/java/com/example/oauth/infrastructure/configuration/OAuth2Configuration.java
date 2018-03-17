@@ -15,11 +15,15 @@ import org.springframework.security.oauth2.client.filter.OAuth2ClientAuthenticat
 import org.springframework.security.oauth2.client.filter.OAuth2ClientContextFilter;
 import org.springframework.security.oauth2.client.token.grant.code.AuthorizationCodeResourceDetails;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableOAuth2Client;
+import org.springframework.security.web.RedirectStrategy;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.web.context.annotation.SessionScope;
 
 import javax.servlet.Filter;
+import javax.servlet.http.HttpSession;
 
 @RequiredArgsConstructor
 @EnableOAuth2Client
@@ -27,16 +31,22 @@ import javax.servlet.Filter;
 public class OAuth2Configuration extends WebSecurityConfigurerAdapter {
 
     private final OAuth2ClientContext oauth2ClientContext;
-
+    private final HttpSession session;
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         // @formatter:off
-        http.antMatcher("/**").authorizeRequests().antMatchers("/", "/login", "/webjars/**").permitAll().anyRequest()
-                .authenticated().and().exceptionHandling()
-                .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")).and().logout()
-                .logoutSuccessUrl("/").permitAll().and().csrf()
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
+        http.antMatcher("/**")
+                .authorizeRequests().antMatchers("/", "/login", "/webjars/**").permitAll().anyRequest().authenticated()
+            .and()
+                .exceptionHandling()
+                .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
+            .and()
+                .logout().logoutSuccessUrl("/").permitAll()
+            .and()
+                .csrf()
+//                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
+                .disable()
                 .addFilterBefore(ssoFilter(), BasicAuthenticationFilter.class);
         // @formatter:on
     }
@@ -57,6 +67,8 @@ public class OAuth2Configuration extends WebSecurityConfigurerAdapter {
         UserInfoTokenServices tokenServices = new UserInfoTokenServices(oauth2Resource().getUserInfoUri(), oauth2Client().getClientId());
         tokenServices.setRestTemplate(oAuth2RestTemplate);
         facebookFilter.setTokenServices(new UserInfoTokenServices(oauth2Resource().getUserInfoUri(), oauth2Client().getClientId()));
+
+        facebookFilter.setAuthenticationSuccessHandler(authenticationSuccessHandler());
         return facebookFilter;
     }
 
@@ -77,4 +89,17 @@ public class OAuth2Configuration extends WebSecurityConfigurerAdapter {
         return new OAuth2RestTemplate(oauth2Client(), oauth2ClientContext);
     }
 
+    @SessionScope
+    @Bean
+    public AuthenticationSuccessHandler authenticationSuccessHandler() {
+        SavedRequestAwareAuthenticationSuccessHandler successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
+        successHandler.setRedirectStrategy(redirectStrategy());
+        return successHandler;
+    }
+
+    @SessionScope
+    @Bean
+    public RedirectStrategy redirectStrategy() {
+        return new MyRedirectStrategy(session);
+    }
 }
