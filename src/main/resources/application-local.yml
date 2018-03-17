@@ -1,0 +1,18 @@
+oauth2:
+  client:
+    client-id: 319512109435-t5vpso8t9sapr3ur8jvu1q292ng2o5h4.apps.googleusercontent.com
+    client-secret: O7BbRufXgWBUy_MFOpX9wPYy
+    access-token-uri: https://www.googleapis.com/oauth2/v4/token
+    user-authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+    tokenName: code
+    authenticationScheme: header
+    clientAuthenticationScheme: form
+    pre-established-redirect-uri: http://localhost:8080/login
+    use-current-uri: false
+    scope: profile, https://www.googleapis.com/auth/contacts.readonly
+  resource:
+    userInfoUri: https://www.googleapis.com/oauth2/v1/userinfo
+
+logging:
+  level:
+    org.springframework.security: DEBUG
