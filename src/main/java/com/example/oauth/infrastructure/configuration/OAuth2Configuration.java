@@ -7,6 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.oauth2.client.OAuth2ClientContext;
@@ -20,9 +22,11 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.context.annotation.SessionScope;
 
 import javax.servlet.Filter;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 @RequiredArgsConstructor
@@ -31,23 +35,24 @@ import javax.servlet.http.HttpSession;
 public class OAuth2Configuration extends WebSecurityConfigurerAdapter {
 
     private final OAuth2ClientContext oauth2ClientContext;
+    private final RedirectStrategy redirectStrategy;
     private final HttpSession session;
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         // @formatter:off
         http.antMatcher("/**")
-                .authorizeRequests().antMatchers("/", "/login", "/webjars/**").permitAll().anyRequest().authenticated()
+            .authorizeRequests().antMatchers("/", "/login", "/webjars/**").permitAll().anyRequest().authenticated()
             .and()
-                .exceptionHandling()
-                .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
+            .exceptionHandling()
+            .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
             .and()
-                .logout().logoutSuccessUrl("/").permitAll()
+            .logout().logoutSuccessUrl("/").permitAll()
             .and()
-                .csrf()
-//                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
-                .disable()
-                .addFilterBefore(ssoFilter(), BasicAuthenticationFilter.class);
+            .csrf()
+            .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
+//            .disable()
+            .addFilterBefore(ssoFilter(), BasicAuthenticationFilter.class);
         // @formatter:on
     }
 
@@ -93,13 +98,13 @@ public class OAuth2Configuration extends WebSecurityConfigurerAdapter {
     @Bean
     public AuthenticationSuccessHandler authenticationSuccessHandler() {
         SavedRequestAwareAuthenticationSuccessHandler successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
-        successHandler.setRedirectStrategy(redirectStrategy());
+        successHandler.setRedirectStrategy(redirectStrategy);
         return successHandler;
     }
 
     @SessionScope
     @Bean
-    public RedirectStrategy redirectStrategy() {
-        return new MyRedirectStrategy(session);
+    public RedirectStrategy redirectStrategy(HttpSession session, HttpServletRequest request) {
+        return new MyRedirectStrategy(session, request);
     }
 }
